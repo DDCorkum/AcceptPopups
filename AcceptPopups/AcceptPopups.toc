@@ -3,7 +3,7 @@
 ## Notes: Accepts a dialog for a day, week or month
 ## Author: Dahk Celes (DDCorkum)
 ## X-License: All rights reserved
-## Version: 1.1
+## Version: 1.2
 ## SavedVariables: AcceptPopupsUntil 
 
 AcceptPopups.lua

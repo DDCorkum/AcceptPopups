@@ -13,6 +13,10 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
+1.2 (2021-11-19) by Dahk Celes
+- Blocklist improvements
+- No action on normal clicks (bugfix)
+
 1.1 (2021-11-17) by Dahk Celes
 - Prepopulated blocklist
 - Error detection for auto-blocklist
@@ -24,7 +28,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 local BLOCKLIST = -1
 
-AcceptPopupsUntil =
+AcceptPopupsUntil = {}	-- saved variable
+
+local neverAcceptPopups =
 {
 	-- Protected
 	["ADD_FRIEND"] = BLOCKLIST,							-- C_FriendList.AddFriend()
@@ -41,13 +47,13 @@ AcceptPopupsUntil =
 	["NAME_CHAT"] = BLOCKLIST,
 	["RENAME_GUILD"] = BLOCKLIST,
 	["RENAME_PET"] = BLOCKLIST,
-	
 }
 
 local function isEligibleDialog(which)
 	dialog = StaticPopupDialogs[which]
 	return
-		AcceptPopupsUntil[which] ~= BLOCKLIST
+		not neverAcceptPopups[which]
+		and AcceptPopupsUntil[which] ~= BLOCKLIST
 		and dialog.hasMoneyInputFrame ~= 1
 		and (dialog.button2 or dialog.button3 or dialog.button4)	-- rules out dialogs with only a single button, such as StaticPopupDialogs.CAMP
 end
@@ -112,7 +118,7 @@ end
 
 local function preClick(self, button)
 	local which = self:GetParent().which
-	if isEligibleDialog(which) and button ~= "Button30" then
+	if isEligibleDialog(which) and button ~= "Button30" and IsModifierKeyDown() then
 		AcceptPopupsUntil[which] = time() + (IsShiftKeyDown() and 86400 or IsControlKeyDown() and 604800 or 259200)
 	end
 end

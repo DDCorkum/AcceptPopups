@@ -13,6 +13,9 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
+1.5 (2022-01-17) by Dahk Celes
+- Options menu tooltips to describe each popup type.
+
 1.4 (2021-12-11) by Dahk Celes
 - Add popups from the options menu
 - Custom durations up to 365 days
@@ -158,7 +161,7 @@ do
 	StaticPopup2Button1:HookScript("PreClick", popupPreClick)
 
 	StaticPopup3Button1:HookScript("OnShow", popupOnShow)
-	StaticPopup2Button1:HookScript("OnHide", popupOnHide)
+	StaticPopup3Button1:HookScript("OnHide", popupOnHide)
 	StaticPopup3Button1:HookScript("PreClick", popupPreClick)
 end
 
@@ -234,6 +237,9 @@ do
 				else
 					GameTooltip:AddLine("|n|cffffffff" .. KEY_BUTTON2 .. "|r|cffff6666 - " .. REMOVE)
 				end
+				if StaticPopupDialogs[button.key] then
+					GameTooltip:AddLine("|n" .. StaticPopupDialogs[button.key].text, 0.5, 0.5, 0.5)
+				end
 				GameTooltip:Show()
 			end)
 			button:SetScript("OnLeave", function()
@@ -299,6 +305,9 @@ do
 			for __, key in ipairs(keys) do
 				info.text = key
 				info.arg1 = key
+				info.tooltipTitle = StaticPopupDialogs[key].text and key
+				info.tooltipText = StaticPopupDialogs[key].text
+				info.tooltipOnButton = true
 				UIDropDownMenu_AddButton(info, 2)
 			end
 		end

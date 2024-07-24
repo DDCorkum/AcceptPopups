@@ -1,4 +1,4 @@
-## Interface: 100000
+## Interface: 110000
 ## Title: AcceptPopups
 ## Notes: Accepts a dialog for a day, week or month
 ## Author: Dahk Celes (DDCorkum)

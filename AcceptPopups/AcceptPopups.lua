@@ -13,6 +13,9 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
+1.7 (2024-07-24) by Dahk Celes
+- Updates for WoW The War Within
+
 1.6 (2022-10-30) by Dahk Celes
 - Updates for WoW Dragonflight
 
@@ -64,17 +67,19 @@ local neverAcceptPopups =
 	["DIALOG_REPLACE_MOUNT_EQUIPMENT"] = BLOCKLIST,		-- C_MountJournal.ApplyMountEquipment()
 	["DANGEROUS_SCRIPTS_WARNING"] = BLOCKLIST,			-- SetAllowDangerousScripts()
 	["QUIT"] = BLOCKLIST,								-- ForceQuit()
-		
+	["DELETE_ITEM"] = BLOCKLIST,						-- DeleteCursorItem()
+	
 	-- Requires user input
 	["BATTLE_PET_RENAME"] = BLOCKLIST,
 	["NAME_CHAT"] = BLOCKLIST,
 	["RENAME_GUILD"] = BLOCKLIST,
 	["RENAME_PET"] = BLOCKLIST,
+	
 }
 
 local function isEligibleDialog(which)
-	dialog = StaticPopupDialogs[which]
-	if (dialog) then return
+	local dialog = StaticPopupDialogs[which]
+	if dialog then return
 		not neverAcceptPopups[which]
 		and AcceptPopupsUntil[which] ~= BLOCKLIST
 		and dialog.hasMoneyInputFrame ~= 1
@@ -174,9 +179,8 @@ end
 
 do
 	local panel = CreateFrame("Frame")
-	panel.name = "AcceptPopups"
-	panel:Hide()
-	InterfaceOptions_AddCategory(panel)
+	local category = Settings.RegisterCanvasLayoutCategory(panel, "AcceptPopups")
+	Settings.RegisterAddOnCategory(category)
 	
 	local title = panel:CreateFontString("ARTWORK", nil, "GameFontNormalLarge")
 	title:SetText("AcceptPopups")
@@ -231,6 +235,9 @@ do
 			button:SetScript("OnEnter", function()
 				GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
 				GameTooltip:AddLine(button.key)
+				if StaticPopupDialogs[button.key] then
+					GameTooltip:AddLine(StaticPopupDialogs[button.key].text, 0.9, 0.9, 0.9)
+				end
 				GameTooltip:AddLine("|n|cffffffff" .. KEY_BUTTON1)
 				GameTooltip:AddLine("|cffccccff" .. SHIFT_KEY_TEXT .. "|r|cff999999 - " .. DAYS_ABBR:format(AcceptPopupsOptions.shiftDays or 1))
 				GameTooltip:AddLine("|cffccccff" .. CTRL_KEY_TEXT .. "|r|cff999999 - " .. DAYS_ABBR:format(AcceptPopupsOptions.ctrlDays or 7))
@@ -239,9 +246,6 @@ do
 					GameTooltip:AddLine("|n|cffffffff" .. KEY_BUTTON2 .. "|r|cffff6666 - " .. CANCEL)
 				else
 					GameTooltip:AddLine("|n|cffffffff" .. KEY_BUTTON2 .. "|r|cffff6666 - " .. REMOVE)
-				end
-				if StaticPopupDialogs[button.key] then
-					GameTooltip:AddLine("|n" .. StaticPopupDialogs[button.key].text, 0.5, 0.5, 0.5)
 				end
 				GameTooltip:Show()
 			end)
@@ -278,7 +282,10 @@ do
 			info.text = "s-z"
 			info.menuList = "STUVWXYZ"
 			UIDropDownMenu_AddButton(info)
-		elseif menuList then
+			info.text = "Unavailable"
+			info.menuList = "Unavailable"
+			UIDropDownMenu_AddButton(info)
+		elseif menuList and menuList ~= "Unavailable" then
 			function info.func(__, which)
 				AcceptPopupsUntil[which] = time() + 86400
 				panel:Hide()
@@ -311,6 +318,25 @@ do
 				info.tooltipTitle = StaticPopupDialogs[key].text and key
 				info.tooltipText = StaticPopupDialogs[key].text
 				info.tooltipOnButton = true
+				UIDropDownMenu_AddButton(info, 2)
+			end
+		elseif menuList == "Unavailable" then
+			local keys = {}
+			for key, val in pairs(AcceptPopupsUntil) do
+				if val == BLOCKLIST and StaticPopupDialogs[key] then
+					tinsert(keys, key)
+				end
+			end
+			for key in pairs(neverAcceptPopups) do
+				if StaticPopupDialogs[key] then
+					tinsert(keys, key)
+				end
+			end
+			sort(keys)
+			for __, key in ipairs(keys) do
+				info.text = key
+				info.tooltipTitle = StaticPopupDialogs[key].text and key
+				info.tooltipText = StaticPopupDialogs[key].text
 				UIDropDownMenu_AddButton(info, 2)
 			end
 		end
@@ -443,10 +469,7 @@ do
 	panel:SetScript("OnHide", panelOnHide)
 
 	function SlashCmdList.ACCEPTPOPUPS()
-		if InterfaceAddOnsList_Update and (WOW_PROJECT_ID == WOW_PROJECT_CLASSIC or WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC) then
-			InterfaceAddOnsList_Update()	-- https://github.com/Stanzilla/WoWUIBugs/issues/89
-		end
-		InterfaceOptionsFrame_OpenToCategory(panel)
+		Settings.OpenToCategory(category:GetID())
 	end
 	SLASH_ACCEPTPOPUPS1 = "/acceptpopups"
 end

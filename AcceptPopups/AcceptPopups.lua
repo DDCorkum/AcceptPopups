@@ -13,6 +13,9 @@ OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
+1.8 (2024-09-01) by Dahk Celes
+- Handles a new category of popups in WoW 11.0
+
 1.7 (2024-07-24) by Dahk Celes
 - Updates for WoW The War Within
 
@@ -58,6 +61,9 @@ local BLOCKLIST = -1
 
 local neverAcceptPopups =
 {
+	-- Special case handled using custom code
+	["GENERIC_CONFIRMATION"] = BLOCKLIST,				-- see StaticPopup_ShowCustomGenericConfirmation()
+
 	-- Protected
 	["ADD_FRIEND"] = BLOCKLIST,							-- C_FriendList.AddFriend()
 	["BID_AUCTION"] = BLOCKLIST,						-- C_AuctionHouse.PlaceBid()
@@ -70,6 +76,8 @@ local neverAcceptPopups =
 	["DELETE_ITEM"] = BLOCKLIST,						-- DeleteCursorItem()
 	
 	-- Requires user input
+	["GENERIC_INPUT_BOX"] = BLOCKLIST,
+	["GENERIC_DROP_DOWN"] = BLOCKLIST,
 	["BATTLE_PET_RENAME"] = BLOCKLIST,
 	["NAME_CHAT"] = BLOCKLIST,
 	["RENAME_GUILD"] = BLOCKLIST,
@@ -92,6 +100,22 @@ end
 
 
 ------------------------
+-- Popup Types
+
+local function getWhich(self)
+	local which = self:GetParent().which
+	if which == "GENERIC_CONFIRMATION" then
+		-- see StaticPopup_ShowCustomGenericConfirmation()
+		local text = self:GetParent().data.text:gsub("%s+", " ")
+		if text then
+			return "___" .. text
+		end
+	end
+	return which
+end
+
+
+------------------------
 -- Popup Automation
 
 do
@@ -100,14 +124,14 @@ do
 	listener:RegisterEvent("ADDON_ACTION_BLOCKED")
 	listener:SetScript("OnEvent", function()
 		if listener.listenFor then
-			print("AcceptPopups detected an error so it will no longer try to automate " .. listener.listenFor .. " popups.")
+			print("AcceptPopups detected an error, so it will no longer automate this kind of popup.")
 			listener.listenFor = nil
 		end
 	end)
 
 	local function popupOnUpdate(self)
 		self:SetScript("OnUpdate", nil)
-		local which = self:GetParent().which
+		local which = getWhich(self)
 		if AcceptPopupsUntil[which] and isEligibleDialog(which) and AcceptPopupsUntil[which] > time() then
 			listener.listenFor = which
 			self:Enable()
@@ -124,7 +148,7 @@ do
 	end
 
 	local function popupOnEnter(self)
-		local which = self:GetParent().which
+		local which = getWhich(self)
 		if isEligibleDialog(which) then
 			if GameTooltip:GetOwner() ~= self then
 				GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
@@ -154,7 +178,7 @@ do
 	end
 
 	local function popupPreClick(self, button)
-		local which = self:GetParent().which
+		local which = getWhich(self)
 		if isEligibleDialog(which) and button ~= "Button30" and IsModifierKeyDown() then
 			AcceptPopupsUntil[which] = time() + 86400 * (IsShiftKeyDown() and (AcceptPopupsOptions.shiftDays or 1) or IsControlKeyDown() and (AcceptPopupsOptions.ctrlDays or 7) or (AcceptPopupsOptions.altDays or 30))
 		end
@@ -237,6 +261,8 @@ do
 				GameTooltip:AddLine(button.key)
 				if StaticPopupDialogs[button.key] then
 					GameTooltip:AddLine(StaticPopupDialogs[button.key].text, 0.9, 0.9, 0.9)
+				elseif button.key:sub(1,3) ~= "___" then
+					GameTooltip:AddLine("No description available.  Could be a disabled AddOn or removed feature.", 0.9, 0.9, 0.9)
 				end
 				GameTooltip:AddLine("|n|cffffffff" .. KEY_BUTTON1)
 				GameTooltip:AddLine("|cffccccff" .. SHIFT_KEY_TEXT .. "|r|cff999999 - " .. DAYS_ABBR:format(AcceptPopupsOptions.shiftDays or 1))
@@ -254,7 +280,7 @@ do
 			end)
 			return button
 		end,
-		FramePool_HideAndClearAnchors
+		Pool_HideAndClearAnchors or FramePool_HideAndClearAnchors	-- WoW 11.0 vs Classic
 	)
 	
 	
@@ -425,12 +451,13 @@ do
 			local duration = AcceptPopupsUntil[key] - time()
 			local fontString = fontStrings:Acquire()
 			local button = buttons:Acquire()
+			
 			if duration > 86400 then
-				fontString:SetText(key .. " |cff999999" .. SPELL_DURATION_DAYS:format(duration/86400))
+				fontString:SetText(key:sub(1, 90) .. " |cff999999" .. SPELL_DURATION_DAYS:format(duration/86400))
 			elseif duration > 0 then
-				fontString:SetText(key .. " |cff999999" .. SPELL_DURATION_HOURS:format(duration/3600))
+				fontString:SetText(key:sub(1, 90) .. " |cff999999" .. SPELL_DURATION_HOURS:format(duration/3600))
 			else
-				fontString:SetText(key .. " |cff996666" .. ADDON_DISABLED)
+				fontString:SetText(key:sub(1, 90) .. " |cff996666" .. ADDON_DISABLED)
 			end
 			fontString:SetPoint("LEFT", scrollChild, "TOPLEFT", 30, y)
 			fontString:Show()
